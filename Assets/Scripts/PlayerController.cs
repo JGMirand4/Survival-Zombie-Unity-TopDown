@@ -1,7 +1,8 @@
-using System.Collections; // NECESSÁRIO PARA A COROUTINE DE TEMPO
+using System.Collections; 
 using UnityEngine;
 using UnityEngine.InputSystem; 
 using UnityEngine.SceneManagement;
+using TMPro; 
 
 public class PlayerController : MonoBehaviour
 {
@@ -34,8 +35,26 @@ public class PlayerController : MonoBehaviour
     private Animator                            _muzzleAnimator; 
     private float                               nextFireTime = 0f;                     
 
-    // --- NOVA VARIÁVEL DE MORTE ---
     private bool                                _isDead = false;
+
+    [Header("Status do Jogador")]
+    public int vidasTotais = 3; 
+    private int vidasAtuais;
+    
+    public float healthMaxima = 100f; 
+    private float healthAtual;
+
+    [Header("Interface")]
+    public TextMeshProUGUI textoVida; 
+    public UnityEngine.UI.Slider sliderVida; 
+
+    [Header("Ação Especial")]
+    public float raioDeExplosao = 4f;
+    public GameObject explosaoPrefab;
+
+    [Header("Áudio")]
+    public AudioSource audioSource;
+    public AudioClip somTiro;
 
     private void OnEnable() { _playerControls.Enable(); }
     private void OnDisable() { _playerControls.Disable(); }
@@ -68,24 +87,35 @@ public class PlayerController : MonoBehaviour
             _muzzleAnimator = muzzleFlash.GetComponent<Animator>();
             muzzleFlash.SetActive(false);
         }
+        
+        vidasAtuais = vidasTotais;
+        healthAtual = healthMaxima;
+        
+        if (sliderVida != null) sliderVida.maxValue = healthMaxima;
+        
+        AtualizarHUD();
+    }
+
+    void AtualizarHUD()
+    {
+        if (textoVida != null) textoVida.text = "Life: " + vidasAtuais;
+        if (sliderVida != null) sliderVida.value = healthAtual;
     }
 
     void Update()
     {
-        // SE ESTIVER MORTO, NÃO DEIXA FAZER NADA E SAI DO UPDATE
         if (_isDead) return;
 
         PlayerInput();
         UpdateAnimation();
         CheckWeaponToggle(); 
         CheckCombatInput(); 
+        CheckSpecialAttack(); 
     }
 
     void FixedUpdate()
     {
-        // SE ESTIVER MORTO, PARA DE SE MOVER FISICAMENTE
         if (_isDead) return;
-
         PlayerMove();
     }
 
@@ -127,7 +157,7 @@ public class PlayerController : MonoBehaviour
             _handsAnimator.SetFloat("Y", _lastDirection.y);
         }
 
-        if (muzzleFlash != null && _muzzleAnimator != null)
+        if (muzzleFlash != null && muzzleFlash.activeSelf && _muzzleAnimator != null)
         {
             _muzzleAnimator.SetFloat("X", _lastDirection.x);
             _muzzleAnimator.SetFloat("Y", _lastDirection.y);
@@ -204,9 +234,17 @@ public class PlayerController : MonoBehaviour
             Invoke("HideMuzzleFlash", 0.25f); 
         }
 
+        // --- NOVA LINHA DE ÁUDIO AQUI ---
+        if (audioSource != null && somTiro != null)
+        {
+            // O "0.4f" no final significa 40% do volume original
+            audioSource.PlayOneShot(somTiro, 0.7f); 
+        }
+
         if (bulletPrefab != null && firePoint != null)
         {
             Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
+            CameraShake.Instance.Shake(0.5f, 0.05f);
         }
     }
 
@@ -215,16 +253,128 @@ public class PlayerController : MonoBehaviour
         if (muzzleFlash != null) muzzleFlash.SetActive(false);
     }
 
-    // --- NOVA LÓGICA DE COLISÃO E MORTE ---
+    void CheckSpecialAttack()
+    {
+        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+            if (vidasAtuais > 1) 
+            {
+                UsarEspecial();
+            }
+            else
+            {
+                Debug.Log("Vida muito baixa! Não é possível usar o especial.");
+            }
+        }
+    }
+
+    void UsarEspecial()
+    {
+        if (vidasAtuais > 1)
+        {
+            vidasAtuais--; 
+            healthAtual = healthMaxima; 
+            AtualizarHUD();
+
+            CameraShake.Instance.Shake(2f, 0.15f); 
+            
+            StartCoroutine(EfeitoVisualEspecial());
+
+            if (explosaoPrefab != null)
+            {
+                Instantiate(explosaoPrefab, transform.position, Quaternion.identity);
+            }
+
+            EnemyAI[] todosOsZumbis = FindObjectsByType<EnemyAI>(FindObjectsInactive.Exclude);        
+            foreach (EnemyAI zumbi in todosOsZumbis)
+            {
+                float distancia = Vector2.Distance(transform.position, zumbi.transform.position);
+                if (distancia <= raioDeExplosao && !zumbi.isDead)
+                {
+                    zumbi.Die(); 
+                }
+            }
+        }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, raioDeExplosao);
+    }
+
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        // Se já estiver morto, ignora
         if (_isDead) return;
 
         if (collision.gameObject.CompareTag("Enemy"))
         {
-            // Inicia a sequência de morte
-            StartCoroutine(DeathSequence());
+            healthAtual -= 20f;
+            
+            StartCoroutine(EfeitoDanoFlash());
+            CameraShake.Instance.Shake(2f, 0.15f);
+
+            if (healthAtual <= 0)
+            {
+                vidasAtuais--; 
+                healthAtual = healthMaxima; 
+                
+                if (vidasAtuais <= 0)
+                {
+                    StartCoroutine(DeathSequence());
+                }
+            }
+
+            AtualizarHUD();
+        }
+    }
+
+    private IEnumerator EfeitoDanoFlash()
+    {
+        SpriteRenderer playerSprite = GetComponent<SpriteRenderer>();
+
+        if (playerSprite != null)
+        {
+            Color corOriginal = Color.white; 
+            Color corDano;
+            ColorUtility.TryParseHtmlString("#801A1A", out corDano);
+
+            for (int i = 0; i < 3; i++)
+            {
+                playerSprite.color = corDano;
+                if (_gunRenderer != null) _gunRenderer.color = corDano;
+                if (_handsRenderer != null) _handsRenderer.color = corDano;
+
+                yield return new WaitForSeconds(0.1f);
+
+                playerSprite.color = corOriginal;
+                if (_gunRenderer != null) _gunRenderer.color = corOriginal;
+                if (_handsRenderer != null) _handsRenderer.color = corOriginal;
+
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+    }
+
+    private IEnumerator EfeitoVisualEspecial()
+    {
+        SpriteRenderer playerSprite = GetComponent<SpriteRenderer>();
+
+        if (playerSprite != null)
+        {
+            Color corOriginal = Color.white; 
+            Color corNova;
+            ColorUtility.TryParseHtmlString("#801A1A", out corNova); 
+
+            playerSprite.color = corNova; 
+            if (_gunRenderer != null) _gunRenderer.color = corNova;
+            if (_handsRenderer != null) _handsRenderer.color = corNova;
+
+            yield return new WaitForSeconds(0.15f);
+
+            playerSprite.color = corOriginal;
+            if (_gunRenderer != null) _gunRenderer.color = corOriginal;
+            if (_handsRenderer != null) _handsRenderer.color = corOriginal;
         }
     }
 
@@ -233,32 +383,33 @@ public class PlayerController : MonoBehaviour
         _isDead = true;
         Debug.Log("Player morreu! Iniciando animação...");
 
-        // 1. Zera a velocidade para o personagem não deslizar
         _playerRB2D.linearVelocity = Vector2.zero;
 
-        // 2. Desliga a Arma e as Mãos
         if (_gunObject != null) _gunObject.SetActive(false);
         if (_handsObject != null) _handsObject.SetActive(false);
 
-        // 3. Puxa o gatilho da animação do Player
         if (_animator != null) _animator.SetTrigger("Die");
 
-        // --- A MÁGICA: PARANDO TODOS OS ZUMBIS DA TELA ---
-        EnemyAI[] todosOsZumbis = FindObjectsOfType<EnemyAI>();
+        EnemyAI[] todosOsZumbis = FindObjectsByType<EnemyAI>(FindObjectsInactive.Exclude);
         foreach (EnemyAI zumbi in todosOsZumbis)
         {
-            zumbi.enabled = false; // Desliga o script (o cérebro) do zumbi
-            
-            // Força ele a voltar para a animação de Idle (parado)
+            zumbi.enabled = false; 
             Animator zumbiAnim = zumbi.GetComponent<Animator>();
             if (zumbiAnim != null) zumbiAnim.SetFloat("Speed", 0); 
         }
-        // -------------------------------------------------
 
-        // 4. ESPERA 2 SEGUNDOS 
+        // Aguarda a animação de morte terminar
         yield return new WaitForSeconds(2f);
 
-        // 5. Reinicia a fase
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        // --- AQUI ESTÁ A MUDANÇA: Chama o GameManager em vez de recarregar a cena direto ---
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.MostrarGameOver();
+        }
+        else
+        {
+            // Apenas como garantia, se você esquecer o GameManager na cena, ele recarrega normal
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
     }
 }

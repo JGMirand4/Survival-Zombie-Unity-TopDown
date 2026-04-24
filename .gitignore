@@ -21,7 +21,18 @@
 *.pdb
 *.mdb
 *.opendb
+*.blob
 *.VC.db
 
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/MemoryCaptures/
+
 .DS_Store
-Thumbs.db
+.AppleDouble
+.LSOverride

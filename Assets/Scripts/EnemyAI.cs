@@ -15,7 +15,7 @@ public class EnemyAI : MonoBehaviour
     private Transform player;
     private Rigidbody2D rb;
     private Animator animator;
-    private bool isDead = false; 
+    public bool isDead = false; 
 
     void Start()
     {
@@ -93,6 +93,13 @@ public class EnemyAI : MonoBehaviour
         if (animator != null) animator.SetTrigger("Die");
         GetComponent<Collider2D>().enabled = false;
         rb.linearVelocity = Vector2.zero;
+
+        // --- AS 3 LINHAS ADICIONADAS ---
+        // Pede para o GameManager dar 10 pontos
+        if (GameManager.Instance != null) {
+            GameManager.Instance.AdicionarPontos(10); 
+        }
+
         Destroy(gameObject, 1.5f); 
     }
 }
