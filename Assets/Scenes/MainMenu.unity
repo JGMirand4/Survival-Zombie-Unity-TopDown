@@ -1205,6 +1205,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1825874656}
   - component: {fileID: 1825874655}
+  - component: {fileID: 1825874657}
   m_Layer: 0
   m_Name: ProjectorVideo
   m_TagString: Untagged
@@ -1220,7 +1221,7 @@ VideoPlayer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1825874654}
   m_Enabled: 1
-  m_VideoClip: {fileID: 32900000, guid: a5ea641f188aa4e46927e12ee76091ed, type: 3}
+  m_VideoClip: {fileID: 32900000, guid: bc8b73166b668442ca35b8811388d4ea, type: 3}
   m_TargetCameraAlpha: 1
   m_TargetCamera3DLayout: 0
   m_TargetCamera: {fileID: 0}
@@ -1230,10 +1231,10 @@ VideoPlayer:
   m_TargetMaterialProperty: <noninit>
   m_RenderMode: 2
   m_AspectRatio: 2
-  m_DataSource: 0
+  m_DataSource: 1
   m_TimeUpdateMode: 2
   m_PlaybackSpeed: 1.5
-  m_AudioOutputMode: 2
+  m_AudioOutputMode: 0
   m_TargetAudioSources: []
   m_DirectAudioVolumes: []
   m_Url: 
@@ -1261,6 +1262,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1825874657
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1825874654}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b94c1bbadbc84edc84a7afebbdfe1f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VideoWebFixo
 --- !u!1 &1937032274
 GameObject:
   m_ObjectHideFlags: 0
